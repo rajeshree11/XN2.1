@@ -108,6 +108,4 @@ with tab5:
         fig = px.line(trend_data, x='Date', y='Duration_Minutes')
         st.plotly_chart(fig, use_container_width=True)
 
-# Data Table
-with st.expander("📋 View Filtered Data Table"):
-    st.dataframe(filtered_df)
+
