@@ -129,9 +129,6 @@ ax2.set_xlabel("Has Tanker (0 = No, 1 = Yes)")
 ax2.set_ylabel("Lift Duration (Minutes)")
 st.pyplot(fig2)
 
-# Model prediction
-y_pred = mlp.predict(X_test)
-
 # 7. Feature Selection
 features = [
     "temperature_C", "precipitation_mm", "windspeed_mph", "tide_ft", "Is_Daylight",
@@ -150,13 +147,17 @@ X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, 
 mlp = MLPRegressor(hidden_layer_sizes=(16, 8), activation='relu', solver='adam', max_iter=500, random_state=42)
 mlp.fit(X_train, y_train)
 
-# 10. Feature Importance Plot
+# 10. Model Prediction
+y_pred = mlp.predict(X_test)
+
+# 11. Feature Importance Plot
 results = permutation_importance(mlp, X_test, y_test, n_repeats=30, random_state=42)
 importance_df = pd.DataFrame({
     "Feature": features,
     "Importance": results.importances_mean
 }).sort_values(by="Importance", ascending=False)
 
+# 12. Evaluation Plot
 st.subheader("MLP: Actual vs Predicted Lift Duration")
 
 fig3, ax3 = plt.subplots(figsize=(8, 6))
@@ -168,8 +169,14 @@ ax3.set_title("MLP: Actual vs Predicted Duration")
 ax3.grid(True)
 st.pyplot(fig3)
 
-# Print Performance
+# 13. Model Performance
 rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 mae = mean_absolute_error(y_test, y_pred)
 within_5min = np.mean(np.abs(y_test - y_pred) <= 5) * 100
-print(f"\nMLP Regressor Performance:\nRMSE: {rmse:.2f} min | MAE: {mae:.2f} min | ±5min Accuracy: {within_5min:.2f}%")
+
+st.markdown(f"""
+**MLP Regressor Performance Metrics**
+- RMSE: `{rmse:.2f}` minutes  
+- MAE: `{mae:.2f}` minutes  
+- Accuracy within ±5 mins: `{within_5min:.2f}%`
+""")
