@@ -29,6 +29,11 @@ bridge_df = bridge_df[["ETA Bridge", "Start Time", "End Time", "Duration", "Vess
 bridge_df["ETA Bridge"] = pd.to_datetime(bridge_df["ETA Bridge"])
 bridge_df["Start Time"] = pd.to_datetime(bridge_df["Start Time"])
 bridge_df["End Time"] = pd.to_datetime(bridge_df["End Time"])
+
+# Convert "Duration" to timedelta if not already, then to minutes
+if not np.issubdtype(bridge_df["Duration"].dtype, np.timedelta64):
+    bridge_df["Duration"] = pd.to_timedelta(bridge_df["Duration"], errors='coerce')
+
 bridge_df["Lift_Duration_Minutes"] = bridge_df["Duration"].dt.total_seconds() / 60
 bridge_df.drop(columns=["Duration"], inplace=True)
 bridge_df.dropna(subset=["Lift_Duration_Minutes"], inplace=True)
