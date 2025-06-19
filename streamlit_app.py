@@ -1,49 +1,16 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import os
+import datetime
 
 st.set_page_config(page_title="Chelsea Bridge Dashboard", layout="wide")
+st.title("🚢 Chelsea Street Bridge Lift Analytics Dashboard")
 
-st.title("🚢 Chelsea Street Bridge Dashboard")
-
-# Load all required data
 @st.cache_data
 def load_data():
-    data = {}
+    df = pd.read_excel("Chelsea Bridge Data Points_03272025.xlsx", sheet_name="Data", skiprows=3)
 
-    if os.path.exists("Chelsea Bridge Data Points_03272025.xlsx"):
-        data['operations'] = pd.read_excel("Chelsea Bridge Data Points_03272025.xlsx", sheet_name="Data", skiprows=3)
-    else:
-        st.warning("Missing file: Chelsea Bridge Data Points_03272025.xlsx")
-
-    if os.path.exists("chelsea_street_bridge_traffic.xlsx"):
-        data['traffic'] = pd.read_excel("chelsea_street_bridge_traffic.xlsx")
-    else:
-        st.warning("Missing file: chelsea_street_bridge_traffic.xlsx")
-
-    if os.path.exists("final_predictions_output.csv"):
-        data['predictions'] = pd.read_csv("final_predictions_output.csv")
-    else:
-        st.warning("Missing file: final_predictions_output.csv")
-
-    if os.path.exists("final_simulated_bridge_lift_dataset.csv"):
-        data['simulation'] = pd.read_csv("final_simulated_bridge_lift_dataset.csv")
-    else:
-        st.warning("Missing file: final_simulated_bridge_lift_dataset.csv")
-
-    if os.path.exists("Tide_Predictions.xlsx"):
-        data['tide'] = pd.read_excel("Tide_Predictions.xlsx")
-    else:
-        st.warning("Missing file: Tide_Predictions.xlsx")
-
-    return data
-
-data = load_data()
-
-# Preprocess operations data
-if 'operations' in data:
-    ops_df = data['operations'].rename(columns={
+    df = df.rename(columns={
         'ETA Bridge': 'ETA',
         'Start Time': 'Start_Time',
         'End Time': 'End_Time',
@@ -52,99 +19,93 @@ if 'operations' in data:
         'Direction': 'Direction'
     })
 
-    ops_df['Start_Time'] = pd.to_datetime(ops_df['Start_Time'], errors='coerce')
-    ops_df['Duration'] = pd.to_timedelta(ops_df['Duration'].astype(str), errors='coerce')
-    ops_df['Duration_Minutes'] = ops_df['Duration'].dt.total_seconds() / 60
-    ops_df = ops_df.dropna(subset=['Start_Time', 'Duration_Minutes'])
-else:
-    ops_df = pd.DataFrame()
+    df['ETA'] = pd.to_datetime(df['ETA'], errors='coerce')
+    df['Start_Time'] = pd.to_datetime(df['Start_Time'], errors='coerce')
+    df['End_Time'] = pd.to_datetime(df['End_Time'], errors='coerce')
 
-# Tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📊 Operations", 
-    "🚗 Traffic", 
-    "📈 Predictions", 
-    "🌦️ Environment", 
-    "🌊 Tide & Weather"
-])
+    df['Duration'] = df['Duration'].astype(str)
+    df['Duration_Minutes'] = pd.to_timedelta(df['Duration'], errors='coerce').dt.total_seconds() / 60
 
-# --- Tab 1: Operations ---
+    df = df.dropna(subset=['Start_Time', 'Duration_Minutes', 'Direction', 'ETA'])
+
+    df['Hour'] = df['Start_Time'].dt.hour
+    df['Weekday'] = df['Start_Time'].dt.day_name()
+    df['Date'] = df['Start_Time'].dt.date
+
+    return df
+
+df = load_data()
+
+# Sidebar Filters
+st.sidebar.header("🔎 Filter Options")
+
+directions = st.sidebar.multiselect("Select Direction", df['Direction'].unique(), default=df['Direction'].unique())
+
+min_date = df['Start_Time'].min()
+max_date = df['Start_Time'].max()
+default_range = [min_date.date(), max_date.date()] if pd.notnull(min_date) else [datetime.date.today(), datetime.date.today()]
+date_range = st.sidebar.date_input("Select Date Range", default_range)
+
+vessel_search = st.sidebar.text_input("Search Vessel (optional)", "")
+
+min_dur = int(df['Duration_Minutes'].min()) if not df.empty else 0
+max_dur = int(df['Duration_Minutes'].max()) if not df.empty else 60
+duration_range = st.sidebar.slider("Select Duration Range (Minutes)", min_dur, max_dur, (min_dur, max_dur))
+
+# Filter data
+filtered_df = df[
+    (df['Direction'].isin(directions)) &
+    (df['Start_Time'].dt.date >= date_range[0]) &
+    (df['Start_Time'].dt.date <= date_range[1]) &
+    (df['Duration_Minutes'] >= duration_range[0]) &
+    (df['Duration_Minutes'] <= duration_range[1])
+]
+
+if vessel_search:
+    filtered_df = filtered_df[filtered_df['Vessel'].str.contains(vessel_search, case=False, na=False)]
+
+# KPIs
+st.markdown("### 📊 Summary Metrics")
+col1, col2, col3 = st.columns(3)
+col1.metric("Total Lifts", len(filtered_df))
+col2.metric("Avg Duration (min)", round(filtered_df['Duration_Minutes'].mean(), 2) if len(filtered_df) > 0 else "N/A")
+col3.metric("Total Lift Time (hrs)", round(filtered_df['Duration_Minutes'].sum() / 60, 2))
+
+# Tabs for Visualization
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📅 Lifts by Weekday", "⏱️ Duration Histogram", "🧭 IN vs OUT", "📍 ETA vs Start", "📈 Cumulative Duration"])
+
 with tab1:
-    st.subheader("Bridge Lift Operations Overview")
-    if not ops_df.empty:
-        col1, col2 = st.columns(2)
-        col1.metric("Total Lifts", len(ops_df))
-        col2.metric("Avg Duration (min)", round(ops_df['Duration_Minutes'].mean(), 2))
-
-        fig = px.histogram(ops_df, x='Duration_Minutes', nbins=30, title="Lift Duration Distribution")
+    if not filtered_df.empty:
+        weekday_counts = filtered_df['Weekday'].value_counts().reindex(
+            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        ).fillna(0).reset_index()
+        weekday_counts.columns = ['Weekday', 'Lift Count']
+        fig = px.bar(weekday_counts, x='Weekday', y='Lift Count', text='Lift Count')
         st.plotly_chart(fig, use_container_width=True)
-
-        if 'Vessel' in ops_df.columns:
-            top_vessels = ops_df['Vessel'].value_counts().nlargest(5).reset_index()
-            top_vessels.columns = ['Vessel', 'Count']
-            fig = px.bar(top_vessels, x='Vessel', y='Count', title="Top 5 Vessels")
-            st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Bridge lift data not loaded.")
+        st.info("No data available for selected filters.")
 
-# --- Tab 2: Traffic ---
 with tab2:
-    st.subheader("Traffic Volume Over Time")
-    if 'traffic' in data:
-        traffic_df = data['traffic']
-        traffic_df['date'] = pd.to_datetime(traffic_df['date'])
-        fig = px.line(traffic_df, x='date', y='vehicles', title="Daily Vehicle Count")
+    if not filtered_df.empty:
+        fig = px.histogram(filtered_df, x='Duration_Minutes', nbins=30)
         st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Traffic data not loaded.")
 
-# --- Tab 3: Predictions ---
 with tab3:
-    st.subheader("Lift Duration Prediction Accuracy")
-    if 'predictions' in data:
-        pred_df = data['predictions']
-        fig = px.scatter(pred_df, x='Actual_Lift_Duration', y='Predicted_Lift_Duration',
-                         color='Within_5_Minutes', title="Actual vs Predicted Duration")
+    if not filtered_df.empty:
+        dir_counts = filtered_df['Direction'].value_counts().reset_index()
+        dir_counts.columns = ['Direction', 'Count']
+        fig = px.pie(dir_counts, names='Direction', values='Count')
         st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Prediction data not loaded.")
 
-# --- Tab 4: Environment ---
 with tab4:
-    st.subheader("Environmental Impact on Lift Duration")
-    if 'simulation' in data:
-        sim_df = data['simulation']
-        fig = px.scatter(sim_df, x='Max_Temp', y='Lift_Duration', color='Direction', title="Duration vs Temperature")
+    if not filtered_df.empty:
+        fig = px.scatter(filtered_df, x='ETA', y='Start_Time', color='Direction')
         st.plotly_chart(fig, use_container_width=True)
 
-        fig = px.box(sim_df, x='Is_Weekend', y='Lift_Duration', title="Weekend vs Weekday Lift Duration")
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Simulation data not loaded.")
-
-# --- Tab 5: Tide & Weather ---
 with tab5:
-    st.subheader("Tide Predictions")
-    if 'tide' in data:
-        tide_df = data['tide']
+    if not filtered_df.empty:
+        trend_data = filtered_df.groupby('Date')['Duration_Minutes'].sum().cumsum().reset_index()
+        fig = px.line(trend_data, x='Date', y='Duration_Minutes')
+        st.plotly_chart(fig, use_container_width=True)
 
-        if 'Date' in tide_df.columns and 'Time (LST/LDT)' in tide_df.columns:
-            tide_df = tide_df.dropna(subset=['Date', 'Time (LST/LDT)'])
-            tide_df['Datetime'] = pd.to_datetime(
-                tide_df['Date'].astype(str) + " " + tide_df['Time (LST/LDT)'].astype(str),
-                errors='coerce'
-            )
-            tide_df = tide_df.dropna(subset=['Datetime'])
 
-            fig = px.line(
-                tide_df, 
-                x='Datetime', 
-                y='Predicted (ft)', 
-                color='High/Low', 
-                title="Tide Levels Over Time"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("Expected columns 'Date' and 'Time (LST/LDT)' not found in tide data.")
-    else:
-        st.info("Tide data not loaded.")
