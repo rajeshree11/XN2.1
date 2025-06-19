@@ -23,6 +23,11 @@ This dashboard explores bridge lift durations based on vessel type, tide, and we
 **Sponsor Use Case:** This tool enables data-driven decision-making for bridge operations, marine logistics, and public transit optimization.
 """)
 
+# Sidebar Filters
+st.sidebar.header("🔎 Filter Options")
+selected_day = st.sidebar.selectbox("Select Day of Week", options=["All"] + list(range(7)), index=0)
+selected_tanker = st.sidebar.radio("Tanker Involved?", options=["All", "Yes", "No"], index=0)
+
 # Load and clean bridge log data
 bridge_df = pd.read_excel("Chelsea Bridge Data Points_03272025.xlsx", sheet_name="Data", header=3)
 bridge_df = bridge_df[["ETA Bridge", "Start Time", "End Time", "Duration", "Vessel(s)", "Direction"]].dropna()
@@ -57,6 +62,14 @@ bridge_df["windspeed_mph"] = np.random.normal(10, 3, size=len(bridge_df))
 bridge_df["tide_ft"] = np.random.uniform(0, 10, size=len(bridge_df))
 bridge_df["TAVG"] = bridge_df["temperature_C"]
 bridge_df["Did_Rain"] = (bridge_df["precipitation_mm"] > 0).astype(int)
+
+# Apply filters
+if selected_day != "All":
+    bridge_df = bridge_df[bridge_df["Day_of_Week"] == int(selected_day)]
+if selected_tanker == "Yes":
+    bridge_df = bridge_df[bridge_df["Has_Tanker"] == 1]
+elif selected_tanker == "No":
+    bridge_df = bridge_df[bridge_df["Has_Tanker"] == 0]
 
 # Feature selection and ML model
 features = [
