@@ -71,15 +71,19 @@ col1.metric("Total Lifts", len(filtered_df))
 col2.metric("Avg Duration (min)", round(filtered_df['Duration_Minutes'].mean(), 2) if len(filtered_df) > 0 else "N/A")
 col3.metric("Total Lift Time (hrs)", round(filtered_df['Duration_Minutes'].sum() / 60, 2))
 
-# Chart 1: Heatmap of Lifts by Hour and Weekday
-st.markdown("### 🔥 Heatmap: Lifts by Hour & Weekday")
+# Chart 1: Bar Chart of Lifts by Weekday
+st.markdown("### 📅 Total Lifts by Day of the Week")
 if not filtered_df.empty:
-    heatmap_data = filtered_df.groupby(['Weekday', 'Hour']).size().unstack().fillna(0)
-    heatmap_data = heatmap_data.reindex(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
-    fig1 = px.imshow(heatmap_data, labels=dict(x="Hour", y="Weekday", color="Lift Count"), color_continuous_scale='Blues')
+    weekday_counts = filtered_df['Weekday'].value_counts().reindex(
+        ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    ).fillna(0).reset_index()
+    weekday_counts.columns = ['Weekday', 'Lift Count']
+    fig1 = px.bar(weekday_counts, x='Weekday', y='Lift Count', text='Lift Count',
+                  title="Total Bridge Lifts per Day of the Week")
     st.plotly_chart(fig1, use_container_width=True)
 else:
     st.warning("No data available for the selected filters.")
+
 
 # Chart 2: Histogram of Lift Durations
 st.markdown("### ⏱️ Histogram: Lift Duration Distribution")
