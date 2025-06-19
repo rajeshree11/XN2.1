@@ -5,7 +5,7 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPRegressor
@@ -97,6 +97,14 @@ col1, col2, col3 = st.columns(3)
 col1.metric("RMSE", f"{rmse:.2f} min")
 col2.metric("MAE", f"{mae:.2f} min")
 col3.metric("±5 min Accuracy", f"{within_5min:.2f}%")
+
+# --- Predict Next Lift ---
+st.header("🔔 Prediction: Next Expected Bridge Lift")
+now = pd.Timestamp.now()
+future_features = X.iloc[[-1]].copy()
+next_duration = mlp.predict(scaler.transform(future_features))[0]
+next_eta = now + timedelta(minutes=int(next_duration))
+st.success(f"🚢 Predicted Next Lift ETA: {next_eta.strftime('%Y-%m-%d %H:%M')} ({int(next_duration)} min from now)")
 
 # --- Pie Charts ---
 st.subheader("🧭 Lift Breakdown by Direction and Time of Day")
