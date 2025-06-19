@@ -28,7 +28,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 
 # 2. Load and Clean Bridge Log Data
-bridge_df = pd.read_excel("/content/Chelsea Bridge Data Points_03272025.xlsx", sheet_name="Data", header=3)
+bridge_df = pd.read_excel("Chelsea Bridge Data Points_03272025.xlsx", sheet_name="Data", header=3)
 bridge_df = bridge_df[["ETA Bridge", "Start Time", "End Time", "Duration", "Vessel(s)", "Direction"]].dropna()
 bridge_df["ETA Bridge"] = pd.to_datetime(bridge_df["ETA Bridge"])
 bridge_df["Start Time"] = pd.to_datetime(bridge_df["Start Time"])
