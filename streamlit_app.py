@@ -9,10 +9,9 @@ st.title("🚢 Chelsea Street Bridge Lift Analytics Dashboard")
 
 @st.cache_data
 def load_data():
-    # Load Excel and skip metadata rows
     df = pd.read_excel("Chelsea Bridge Data Points_03272025.xlsx", sheet_name="Data", skiprows=3)
 
-    # Rename columns for clarity
+    # Rename relevant columns
     df = df.rename(columns={
         'ETA Bridge': 'ETA',
         'Start Time': 'Start_Time',
@@ -22,19 +21,19 @@ def load_data():
         'Direction': 'Direction'
     })
 
-    # Convert date/time columns
+    # Convert datetime columns
     df['ETA'] = pd.to_datetime(df['ETA'], errors='coerce')
     df['Start_Time'] = pd.to_datetime(df['Start_Time'], errors='coerce')
     df['End_Time'] = pd.to_datetime(df['End_Time'], errors='coerce')
 
-    # Clean Duration column
-    df = df[df['Duration'].apply(lambda x: isinstance(x, str) and ':' in x)]
+    # Fix Duration: Convert all to string, then to timedelta
+    df['Duration'] = df['Duration'].astype(str)
     df['Duration_Minutes'] = pd.to_timedelta(df['Duration'], errors='coerce').dt.total_seconds() / 60
 
-    # Drop rows with missing critical fields
+    # Drop rows with missing key values
     df = df.dropna(subset=['Start_Time', 'Duration_Minutes', 'Direction', 'ETA'])
 
-    # Feature engineering
+    # Create new time-based features
     df['Hour'] = df['Start_Time'].dt.hour
     df['Weekday'] = df['Start_Time'].dt.day_name()
     df['Date'] = df['Start_Time'].dt.date
@@ -48,7 +47,7 @@ df = load_data()
 st.sidebar.header("🔎 Filter Options")
 directions = st.sidebar.multiselect("Select Direction", options=df['Direction'].unique(), default=df['Direction'].unique())
 
-# Handle date input defaults safely
+# Handle date selection safely
 min_date = df['Start_Time'].min()
 max_date = df['Start_Time'].max()
 if pd.isnull(min_date) or pd.isnull(max_date):
@@ -65,44 +64,51 @@ filtered_df = df[
     (df['Start_Time'].dt.date <= date_range[1])
 ]
 
-# Summary metrics
+# Summary KPIs
 st.markdown("### 📊 Summary Metrics")
 col1, col2, col3 = st.columns(3)
 col1.metric("Total Lifts", len(filtered_df))
-col2.metric("Avg Duration (min)", round(filtered_df['Duration_Minutes'].mean(), 2))
+col2.metric("Avg Duration (min)", round(filtered_df['Duration_Minutes'].mean(), 2) if len(filtered_df) > 0 else "N/A")
 col3.metric("Total Lift Time (hrs)", round(filtered_df['Duration_Minutes'].sum() / 60, 2))
 
 # Chart 1: Heatmap of Lifts by Hour and Weekday
 st.markdown("### 🔥 Heatmap: Lifts by Hour & Weekday")
-heatmap_data = filtered_df.groupby(['Weekday', 'Hour']).size().unstack().fillna(0)
-heatmap_data = heatmap_data.reindex(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
-fig1 = px.imshow(heatmap_data, labels=dict(x="Hour", y="Weekday", color="Lift Count"), color_continuous_scale='Blues')
-st.plotly_chart(fig1, use_container_width=True)
+if not filtered_df.empty:
+    heatmap_data = filtered_df.groupby(['Weekday', 'Hour']).size().unstack().fillna(0)
+    heatmap_data = heatmap_data.reindex(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+    fig1 = px.imshow(heatmap_data, labels=dict(x="Hour", y="Weekday", color="Lift Count"), color_continuous_scale='Blues')
+    st.plotly_chart(fig1, use_container_width=True)
+else:
+    st.warning("No data available for the selected filters.")
 
 # Chart 2: Histogram of Lift Durations
 st.markdown("### ⏱️ Histogram: Lift Duration Distribution")
-fig2 = px.histogram(filtered_df, x='Duration_Minutes', nbins=30, labels={'Duration_Minutes': 'Minutes'})
-st.plotly_chart(fig2, use_container_width=True)
+if not filtered_df.empty:
+    fig2 = px.histogram(filtered_df, x='Duration_Minutes', nbins=30, labels={'Duration_Minutes': 'Minutes'})
+    st.plotly_chart(fig2, use_container_width=True)
 
-# Chart 3: Pie Chart of Lift Direction
+# Chart 3: Pie Chart of Direction
 st.markdown("### 🧭 Pie Chart: IN vs OUT Lifts")
-dir_counts = filtered_df['Direction'].value_counts().reset_index()
-fig3 = px.pie(dir_counts, names='index', values='Direction', title="Lift Direction Distribution")
-st.plotly_chart(fig3, use_container_width=True)
+if not filtered_df.empty:
+    dir_counts = filtered_df['Direction'].value_counts().reset_index()
+    fig3 = px.pie(dir_counts, names='index', values='Direction', title="Lift Direction Distribution")
+    st.plotly_chart(fig3, use_container_width=True)
 
-# Chart 4: ETA vs Start Time
+# Chart 4: Scatter – ETA vs Start Time
 st.markdown("### 📍 Scatter Plot: ETA vs Start Time")
-fig4 = px.scatter(filtered_df, x='ETA', y='Start_Time', color='Direction',
-                  title='ETA vs Actual Start Time')
-st.plotly_chart(fig4, use_container_width=True)
+if not filtered_df.empty:
+    fig4 = px.scatter(filtered_df, x='ETA', y='Start_Time', color='Direction',
+                      title='ETA vs Actual Start Time')
+    st.plotly_chart(fig4, use_container_width=True)
 
-# Chart 5: Cumulative Lift Duration
+# Chart 5: Cumulative Duration Over Time
 st.markdown("### 📈 Cumulative Lift Duration Over Time")
-trend_data = filtered_df.groupby('Date')['Duration_Minutes'].sum().cumsum().reset_index()
-fig5 = px.line(trend_data, x='Date', y='Duration_Minutes',
-               labels={'Duration_Minutes': 'Cumulative Minutes'})
-st.plotly_chart(fig5, use_container_width=True)
+if not filtered_df.empty:
+    trend_data = filtered_df.groupby('Date')['Duration_Minutes'].sum().cumsum().reset_index()
+    fig5 = px.line(trend_data, x='Date', y='Duration_Minutes',
+                   labels={'Duration_Minutes': 'Cumulative Minutes'})
+    st.plotly_chart(fig5, use_container_width=True)
 
-# Final Table
+# Table
 st.markdown("### 📋 Filtered Lift Data")
 st.dataframe(filtered_df)
