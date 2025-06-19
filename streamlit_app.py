@@ -102,6 +102,9 @@ df["Did_Rain"] = df["Did_Rain"].fillna(0)
 df["windspeed_mph"] = df["windspeed_mph"].fillna(pd.Series(np.random.normal(10, 3, size=len(df))))
 df["tide_ft"] = df["tide_ft"].fillna(pd.Series(np.random.uniform(0, 10, size=len(df))))
 
+# Model prediction
+y_pred = mlp.predict(X_test)
+
 #  Exploratory Data Analysis (EDA)
 
 # EDA 1: Distribution of Lift Durations
