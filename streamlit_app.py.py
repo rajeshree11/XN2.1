@@ -25,8 +25,7 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
-from google.colab import files
-uploaded = files.upload()
+
 
 # 2. Load and Clean Bridge Log Data
 bridge_df = pd.read_excel("/content/Chelsea Bridge Data Points_03272025.xlsx", sheet_name="Data", header=3)
