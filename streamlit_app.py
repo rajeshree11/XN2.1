@@ -150,6 +150,3 @@ importance_df = pd.DataFrame({
 fig_imp = px.bar(importance_df, x="Importance", y="Feature", orientation="h", title="Feature Contributions to Prediction")
 st.plotly_chart(fig_imp)
 
-# Sample Data
-st.subheader("📄 Preview of Cleaned Data")
-st.dataframe(bridge_df.head(10))
