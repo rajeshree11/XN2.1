@@ -98,6 +98,11 @@ col1.metric("RMSE", f"{rmse:.2f} min")
 col2.metric("MAE", f"{mae:.2f} min")
 col3.metric("±5 min Accuracy", f"{within_5min:.2f}%")
 
+# --- Pie Charts ---
+st.subheader("🧭 Lift Breakdown by Direction and Time of Day")
+st.plotly_chart(px.pie(bridge_df, names="Direction", title="Distribution by Lift Direction"))
+st.plotly_chart(px.pie(bridge_df, names="time_of_day", title="Distribution by Time of Day"))
+
 # EDA - Histogram
 st.subheader("Distribution of Bridge Lift Durations")
 fig1, ax1 = plt.subplots(figsize=(10, 5))
