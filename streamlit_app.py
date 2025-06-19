@@ -19,8 +19,7 @@ st.markdown("""
 Welcome to the **Chelsea Street Bridge Lift Duration Dashboard**.
 
 This dashboard explores bridge lift durations based on vessel type, tide, and weather data. It also provides a machine learning-based prediction model to estimate future lift durations.
-
-
+""")
 
 # Sidebar Filters
 st.sidebar.header("🔎 Filter Options")
@@ -58,94 +57,4 @@ np.random.seed(42)
 bridge_df["temperature_C"] = np.random.normal(18, 5, size=len(bridge_df))
 bridge_df["precipitation_mm"] = np.random.uniform(0, 1, size=len(bridge_df))
 bridge_df["windspeed_mph"] = np.random.normal(10, 3, size=len(bridge_df))
-bridge_df["tide_ft"] = np.random.uniform(0, 10, size=len(bridge_df))
-bridge_df["TAVG"] = bridge_df["temperature_C"]
-bridge_df["Did_Rain"] = (bridge_df["precipitation_mm"] > 0).astype(int)
-
-# Apply filters
-if selected_day != "All":
-    bridge_df = bridge_df[bridge_df["Day_of_Week"] == int(selected_day)]
-if selected_tanker == "Yes":
-    bridge_df = bridge_df[bridge_df["Has_Tanker"] == 1]
-elif selected_tanker == "No":
-    bridge_df = bridge_df[bridge_df["Has_Tanker"] == 0]
-
-# Feature selection and ML model
-features = [
-    "temperature_C", "precipitation_mm", "windspeed_mph", "tide_ft", "Is_Daylight",
-    "Hour", "Day_of_Week", "time_of_day", "TAVG", "Did_Rain",
-    "Vessel_Count", "Start_Minutes", "End_Minutes", "Has_Barge", "Has_Tanker"
-]
-X = bridge_df[features].dropna()
-y = bridge_df.loc[X.index, "Lift_Duration_Minutes"]
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-mlp = MLPRegressor(hidden_layer_sizes=(16, 8), activation='relu', solver='adam', max_iter=500, random_state=42)
-mlp.fit(X_train, y_train)
-y_pred = mlp.predict(X_test)
-
-# Metrics
-rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-mae = mean_absolute_error(y_test, y_pred)
-within_5min = np.mean(np.abs(y_test - y_pred) <= 5) * 100
-
-# --- Dashboard Visuals ---
-st.header("📊 Key Performance Indicators")
-col1, col2, col3 = st.columns(3)
-col1.metric("RMSE", f"{rmse:.2f} min")
-col2.metric("MAE", f"{mae:.2f} min")
-col3.metric("±5 min Accuracy", f"{within_5min:.2f}%")
-
-# --- Predict Next Lift ---
-st.header("🔔 Prediction: Next Expected Bridge Lift")
-now = pd.Timestamp.now()
-future_features = X.iloc[[-1]].copy()
-next_duration = mlp.predict(scaler.transform(future_features))[0]
-next_eta = now + timedelta(minutes=int(next_duration))
-st.success(f"🚢 Predicted Next Lift ETA: {next_eta.strftime('%Y-%m-%d %H:%M')} ({int(next_duration)} min from now)")
-
-# --- Pie Charts ---
-st.subheader("🧭 Lift Breakdown by Direction and Time of Day")
-st.plotly_chart(px.pie(bridge_df, names="Direction", title="Distribution by Lift Direction"))
-st.plotly_chart(px.pie(bridge_df, names="time_of_day", title="Distribution by Time of Day"))
-
-# EDA - Histogram
-st.subheader("Distribution of Bridge Lift Durations")
-fig1, ax1 = plt.subplots(figsize=(10, 5))
-sns.histplot(bridge_df['Lift_Duration_Minutes'], bins=30, kde=True, color='skyblue', ax=ax1)
-ax1.set_title("Distribution of Bridge Lift Durations")
-ax1.set_xlabel("Lift Duration (Minutes)")
-ax1.set_ylabel("Frequency")
-st.pyplot(fig1)
-
-# EDA - Boxplot
-st.subheader("Lift Duration by Tanker Involvement")
-fig2, ax2 = plt.subplots(figsize=(10, 5))
-sns.boxplot(x="Has_Tanker", y="Lift_Duration_Minutes", data=bridge_df, ax=ax2)
-ax2.set_title("Lift Duration by Tanker Presence")
-ax2.set_xlabel("Has Tanker (0 = No, 1 = Yes)")
-ax2.set_ylabel("Lift Duration (Minutes)")
-st.pyplot(fig2)
-
-# Evaluation Plot
-st.subheader("MLP: Actual vs Predicted Lift Duration")
-fig3, ax3 = plt.subplots(figsize=(8, 6))
-ax3.scatter(y_test, y_pred, alpha=0.7)
-ax3.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
-ax3.set_xlabel("Actual Duration (min)")
-ax3.set_ylabel("Predicted Duration (min)")
-ax3.set_title("MLP: Actual vs Predicted Duration")
-ax3.grid(True)
-st.pyplot(fig3)
-
-# Feature Importance
-st.subheader("🔍 Feature Importance")
-results = permutation_importance(mlp, X_test, y_test, n_repeats=30, random_state=42)
-importance_df = pd.DataFrame({
-    "Feature": features,
-    "Importance": results.importances_mean
-}).sort_values(by="Importance", ascending=True)
-fig_imp = px.bar(importance_df, x="Importance", y="Feature", orientation="h", title="Feature Contributions to Prediction")
-st.plotly_chart(fig_imp)
-
+bridge_df["tide_ft"]
