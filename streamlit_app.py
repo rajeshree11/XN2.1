@@ -111,6 +111,3 @@ if not filtered_df.empty:
                    labels={'Duration_Minutes': 'Cumulative Minutes'})
     st.plotly_chart(fig5, use_container_width=True)
 
-# Table
-st.markdown("### 📋 Filtered Lift Data")
-st.dataframe(filtered_df)
