@@ -3,15 +3,13 @@ import pandas as pd
 import plotly.express as px
 import datetime
 
-st.set_page_config(page_title="Chelsea Bridge Custom Dashboard", layout="wide")
-
+st.set_page_config(page_title="Chelsea Bridge Dashboard", layout="wide")
 st.title("🚢 Chelsea Street Bridge Lift Analytics Dashboard")
 
 @st.cache_data
 def load_data():
     df = pd.read_excel("Chelsea Bridge Data Points_03272025.xlsx", sheet_name="Data", skiprows=3)
 
-    # Rename relevant columns
     df = df.rename(columns={
         'ETA Bridge': 'ETA',
         'Start Time': 'Start_Time',
@@ -21,97 +19,95 @@ def load_data():
         'Direction': 'Direction'
     })
 
-    # Convert datetime columns
     df['ETA'] = pd.to_datetime(df['ETA'], errors='coerce')
     df['Start_Time'] = pd.to_datetime(df['Start_Time'], errors='coerce')
     df['End_Time'] = pd.to_datetime(df['End_Time'], errors='coerce')
 
-    # Fix Duration: Convert all to string, then to timedelta
     df['Duration'] = df['Duration'].astype(str)
     df['Duration_Minutes'] = pd.to_timedelta(df['Duration'], errors='coerce').dt.total_seconds() / 60
 
-    # Drop rows with missing key values
     df = df.dropna(subset=['Start_Time', 'Duration_Minutes', 'Direction', 'ETA'])
 
-    # Create new time-based features
     df['Hour'] = df['Start_Time'].dt.hour
     df['Weekday'] = df['Start_Time'].dt.day_name()
     df['Date'] = df['Start_Time'].dt.date
 
     return df
 
-# Load data
 df = load_data()
 
-# Sidebar filters
+# Sidebar Filters
 st.sidebar.header("🔎 Filter Options")
-directions = st.sidebar.multiselect("Select Direction", options=df['Direction'].unique(), default=df['Direction'].unique())
 
-# Handle date selection safely
+directions = st.sidebar.multiselect("Select Direction", df['Direction'].unique(), default=df['Direction'].unique())
+
 min_date = df['Start_Time'].min()
 max_date = df['Start_Time'].max()
-if pd.isnull(min_date) or pd.isnull(max_date):
-    default_range = [datetime.date.today(), datetime.date.today()]
-else:
-    default_range = [min_date.date(), max_date.date()]
-
+default_range = [min_date.date(), max_date.date()] if pd.notnull(min_date) else [datetime.date.today(), datetime.date.today()]
 date_range = st.sidebar.date_input("Select Date Range", default_range)
+
+vessel_search = st.sidebar.text_input("Search Vessel (optional)", "")
+
+min_dur = int(df['Duration_Minutes'].min()) if not df.empty else 0
+max_dur = int(df['Duration_Minutes'].max()) if not df.empty else 60
+duration_range = st.sidebar.slider("Select Duration Range (Minutes)", min_dur, max_dur, (min_dur, max_dur))
 
 # Filter data
 filtered_df = df[
     (df['Direction'].isin(directions)) &
     (df['Start_Time'].dt.date >= date_range[0]) &
-    (df['Start_Time'].dt.date <= date_range[1])
+    (df['Start_Time'].dt.date <= date_range[1]) &
+    (df['Duration_Minutes'] >= duration_range[0]) &
+    (df['Duration_Minutes'] <= duration_range[1])
 ]
 
-# Summary KPIs
+if vessel_search:
+    filtered_df = filtered_df[filtered_df['Vessel'].str.contains(vessel_search, case=False, na=False)]
+
+# KPIs
 st.markdown("### 📊 Summary Metrics")
 col1, col2, col3 = st.columns(3)
 col1.metric("Total Lifts", len(filtered_df))
 col2.metric("Avg Duration (min)", round(filtered_df['Duration_Minutes'].mean(), 2) if len(filtered_df) > 0 else "N/A")
 col3.metric("Total Lift Time (hrs)", round(filtered_df['Duration_Minutes'].sum() / 60, 2))
 
-# Chart 1: Bar Chart of Lifts by Weekday
-st.markdown("### 📅 Total Lifts by Day of the Week")
-if not filtered_df.empty:
-    weekday_counts = filtered_df['Weekday'].value_counts().reindex(
-        ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    ).fillna(0).reset_index()
-    weekday_counts.columns = ['Weekday', 'Lift Count']
-    fig1 = px.bar(weekday_counts, x='Weekday', y='Lift Count', text='Lift Count',
-                  title="Total Bridge Lifts per Day of the Week")
-    st.plotly_chart(fig1, use_container_width=True)
-else:
-    st.warning("No data available for the selected filters.")
+# Tabs for Visualization
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📅 Lifts by Weekday", "⏱️ Duration Histogram", "🧭 IN vs OUT", "📍 ETA vs Start", "📈 Cumulative Duration"])
 
+with tab1:
+    if not filtered_df.empty:
+        weekday_counts = filtered_df['Weekday'].value_counts().reindex(
+            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        ).fillna(0).reset_index()
+        weekday_counts.columns = ['Weekday', 'Lift Count']
+        fig = px.bar(weekday_counts, x='Weekday', y='Lift Count', text='Lift Count')
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No data available for selected filters.")
 
-# Chart 2: Histogram of Lift Durations
-st.markdown("### ⏱️ Histogram: Lift Duration Distribution")
-if not filtered_df.empty:
-    fig2 = px.histogram(filtered_df, x='Duration_Minutes', nbins=30, labels={'Duration_Minutes': 'Minutes'})
-    st.plotly_chart(fig2, use_container_width=True)
+with tab2:
+    if not filtered_df.empty:
+        fig = px.histogram(filtered_df, x='Duration_Minutes', nbins=30)
+        st.plotly_chart(fig, use_container_width=True)
 
-# Chart 3: Pie Chart of Direction
-st.markdown("### 🧭 Pie Chart: IN vs OUT Lifts")
-if not filtered_df.empty:
-    dir_counts = filtered_df['Direction'].value_counts().reset_index()
-    dir_counts.columns = ['Direction', 'Count']  # ✅ Rename columns
-    fig3 = px.pie(dir_counts, names='Direction', values='Count', title="Lift Direction Distribution")
-    st.plotly_chart(fig3, use_container_width=True)
+with tab3:
+    if not filtered_df.empty:
+        dir_counts = filtered_df['Direction'].value_counts().reset_index()
+        dir_counts.columns = ['Direction', 'Count']
+        fig = px.pie(dir_counts, names='Direction', values='Count')
+        st.plotly_chart(fig, use_container_width=True)
 
+with tab4:
+    if not filtered_df.empty:
+        fig = px.scatter(filtered_df, x='ETA', y='Start_Time', color='Direction')
+        st.plotly_chart(fig, use_container_width=True)
 
-# Chart 4: Scatter – ETA vs Start Time
-st.markdown("### 📍 Scatter Plot: ETA vs Start Time")
-if not filtered_df.empty:
-    fig4 = px.scatter(filtered_df, x='ETA', y='Start_Time', color='Direction',
-                      title='ETA vs Actual Start Time')
-    st.plotly_chart(fig4, use_container_width=True)
+with tab5:
+    if not filtered_df.empty:
+        trend_data = filtered_df.groupby('Date')['Duration_Minutes'].sum().cumsum().reset_index()
+        fig = px.line(trend_data, x='Date', y='Duration_Minutes')
+        st.plotly_chart(fig, use_container_width=True)
 
-# Chart 5: Cumulative Duration Over Time
-st.markdown("### 📈 Cumulative Lift Duration Over Time")
-if not filtered_df.empty:
-    trend_data = filtered_df.groupby('Date')['Duration_Minutes'].sum().cumsum().reset_index()
-    fig5 = px.line(trend_data, x='Date', y='Duration_Minutes',
-                   labels={'Duration_Minutes': 'Cumulative Minutes'})
-    st.plotly_chart(fig5, use_container_width=True)
-
+# Data Table
+with st.expander("📋 View Filtered Data Table"):
+    st.dataframe(filtered_df)
