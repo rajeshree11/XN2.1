@@ -102,8 +102,6 @@ df["Did_Rain"] = df["Did_Rain"].fillna(0)
 df["windspeed_mph"] = df["windspeed_mph"].fillna(pd.Series(np.random.normal(10, 3, size=len(df))))
 df["tide_ft"] = df["tide_ft"].fillna(pd.Series(np.random.uniform(0, 10, size=len(df))))
 
-# Model prediction
-y_pred = mlp.predict(X_test)
 
 #  Exploratory Data Analysis (EDA)
 
@@ -130,6 +128,9 @@ ax2.set_title("Lift Duration by Tanker Involvement")
 ax2.set_xlabel("Has Tanker (0 = No, 1 = Yes)")
 ax2.set_ylabel("Lift Duration (Minutes)")
 st.pyplot(fig2)
+
+# Model prediction
+y_pred = mlp.predict(X_test)
 
 # 7. Feature Selection
 features = [
