@@ -91,8 +91,10 @@ if not filtered_df.empty:
 st.markdown("### 🧭 Pie Chart: IN vs OUT Lifts")
 if not filtered_df.empty:
     dir_counts = filtered_df['Direction'].value_counts().reset_index()
-    fig3 = px.pie(dir_counts, names='index', values='Direction', title="Lift Direction Distribution")
+    dir_counts.columns = ['Direction', 'Count']  # ✅ Rename columns
+    fig3 = px.pie(dir_counts, names='Direction', values='Count', title="Lift Direction Distribution")
     st.plotly_chart(fig3, use_container_width=True)
+
 
 # Chart 4: Scatter – ETA vs Start Time
 st.markdown("### 📍 Scatter Plot: ETA vs Start Time")
