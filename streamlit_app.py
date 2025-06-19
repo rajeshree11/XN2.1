@@ -20,8 +20,7 @@ Welcome to the **Chelsea Street Bridge Lift Duration Dashboard**.
 
 This dashboard explores bridge lift durations based on vessel type, tide, and weather data. It also provides a machine learning-based prediction model to estimate future lift durations.
 
-**Sponsor Use Case:** This tool enables data-driven decision-making for bridge operations, marine logistics, and public transit optimization.
-""")
+
 
 # Sidebar Filters
 st.sidebar.header("🔎 Filter Options")
