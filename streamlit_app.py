@@ -6,24 +6,28 @@ import datetime
 st.set_page_config(page_title="Chelsea Bridge Dashboard", layout="wide")
 st.title("🚢 Chelsea Street Bridge Lift Analytics Dashboard")
 
-#  Load Next lift prediction data
+# 🔮 Load simulated lift prediction data
 @st.cache_data
 def load_predictions():
     try:
         sim_df = pd.read_csv("final_simulated_bridge_lift_dataset.csv")
         sim_df = sim_df.dropna(subset=['Lift_Duration'])
-        return sim_df.sort_values(by='Notice_min')
+        sim_df = sim_df.sort_values(by='Notice_min')
+        return sim_df
     except Exception as e:
         st.error(f"❌ Error loading simulated lift data: {e}")
         return pd.DataFrame()
 
 predictions = load_predictions()
 
-# 🧭 Display the next lift prediction
+# 🧭 Display the next simulated lift
 if not predictions.empty:
     next_lift = predictions.iloc[0]
-    st.markdown("###  Next Bridge Lift")
+    predicted_time = pd.Timestamp.now() + pd.to_timedelta(next_lift['Notice_min'], unit='m')
+
+    st.markdown("### 🔮 Next Simulated Bridge Lift")
     st.info(f"""
+    🕒 **Predicted Time:** {predicted_time.strftime('%Y-%m-%d %H:%M')}  
     🛥️ **Lift Type:** {next_lift.get('Lift Type', 'N/A')}  
     ⏱️ **Predicted Duration:** {round(next_lift['Lift_Duration'], 2)} minutes  
     📍 **Direction:** {next_lift.get('Direction', 'N/A')}  
@@ -31,6 +35,10 @@ if not predictions.empty:
     🌊 **Tide Level:** {next_lift.get('Tide_Level', 'N/A')} m  
     🌞 **Is Daylight:** {'Yes' if next_lift.get('Is_Daylight', 0) == 1 else 'No'}  
     """)
+
+    st.markdown("### 🧭 Top 3 Upcoming Simulated Lifts")
+    st.dataframe(predictions.head(3).reset_index(drop=True))
+
 else:
     st.warning("⚠️ No simulated lift data available to display next prediction.")
 
@@ -85,6 +93,14 @@ filtered_df = df[
 
 if vessel_search:
     filtered_df = filtered_df[filtered_df['Vessel'].str.contains(vessel_search, case=False, na=False)]
+
+# 📥 Download Button
+st.download_button(
+    label="📥 Download Filtered Data as CSV",
+    data=filtered_df.to_csv(index=False),
+    file_name="filtered_bridge_lifts.csv",
+    mime="text/csv"
+)
 
 # 📊 Summary Metrics
 st.markdown("### 📊 Historical Lift Summary")
