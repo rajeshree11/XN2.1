@@ -6,13 +6,12 @@ import datetime
 st.set_page_config(page_title="Chelsea Bridge Dashboard", layout="wide")
 st.title("🚢 Chelsea Street Bridge Lift Analytics Dashboard")
 
-# 🔄 Load simulated prediction data
+# 🔄 Load simulated prediction data (without ETA)
 @st.cache_data
 def load_predictions():
     try:
         sim_df = pd.read_csv("final_simulated_bridge_lift_dataset.csv")
-        sim_df['ETA'] = pd.to_datetime(sim_df['ETA'], errors='coerce')
-        sim_df = sim_df.dropna(subset=['ETA', 'Lift_Duration'])
+        sim_df = sim_df.dropna(subset=['Lift_Duration'])
         return sim_df
     except Exception as e:
         st.error(f"❌ Error loading lift simulation data: {e}")
@@ -20,20 +19,20 @@ def load_predictions():
 
 predictions = load_predictions()
 
-# 📅 Show next simulated lift
+# 📅 Show next simulated lift (first row or sorted by shortest notice)
 if not predictions.empty:
-    upcoming = predictions[predictions['ETA'] > pd.Timestamp.now()].sort_values(by='ETA')
-    if not upcoming.empty:
-        next_lift = upcoming.iloc[0]
-        st.markdown("### 📅 Next Scheduled Lift (Simulated)")
-        st.info(f"""
-        🛥️ **ETA:** {next_lift['ETA'].strftime('%Y-%m-%d %H:%M')}  
-        ⏱️ **Predicted Duration:** {round(next_lift['Lift_Duration'], 2)} minutes  
-        📍 **Direction:** {next_lift.get('Direction', 'N/A')}  
-        🚢 **Vessel Type:** {next_lift.get('Vessel', 'N/A')}
-        """)
-    else:
-        st.success("✅ No upcoming lifts found.")
+    next_lift = predictions.sort_values(by='Notice_min').iloc[0]
+    st.markdown("### 📅 Next Simulated Lift (Preview)")
+    st.info(f"""
+    🚢 **Lift Type:** {next_lift.get('Lift Type', 'N/A')}  
+    ⏱️ **Predicted Duration:** {round(next_lift['Lift_Duration'], 2)} minutes  
+    📍 **Direction:** {next_lift.get('Direction', 'N/A')}  
+    ⚓ **Vessel Count:** {next_lift.get('Vessel_Count', 'N/A')}  
+    🌊 **Tide Level:** {next_lift.get('Tide_Level', 'N/A')} m  
+    ☀️ **Is Daylight:** {'Yes' if next_lift.get('Is_Daylight', 0) == 1 else 'No'}
+    """)
+else:
+    st.warning("⚠️ No simulated lift data available.")
 
 # 📦 Load core bridge data
 @st.cache_data
