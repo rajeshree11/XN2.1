@@ -11,7 +11,7 @@ st.title("🚢 Chelsea Street Bridge Lift Analytics Dashboard")
 @st.cache_data
 def load_predictions():
     try:
-        pred_df = pd.read_csv("final_predictions_output.csv")
+        pred_df = pd.read_csv("final_simulated_bridge_lift_dataset.csv")
         pred_df['ETA'] = pd.to_datetime(pred_df['ETA'], errors='coerce')
         pred_df = pred_df.dropna(subset=['ETA', 'Predicted_Lift_Duration'])
         return pred_df
