@@ -108,4 +108,21 @@ with tab5:
         fig = px.line(trend_data, x='Date', y='Duration_Minutes')
         st.plotly_chart(fig, use_container_width=True)
 
+# Display next scheduled lift info
+if 'predictions' in data:
+    upcoming = data['predictions'].copy()
+    upcoming['ETA'] = pd.to_datetime(upcoming['ETA'], errors='coerce')
+    upcoming = upcoming[upcoming['ETA'] > pd.Timestamp.now()].sort_values(by='ETA')
+
+    if not upcoming.empty:
+        next_lift = upcoming.iloc[0]
+        st.markdown("### 📅 Next Scheduled Lift")
+        st.info(f"🛥️ **ETA:** {next_lift['ETA']}  
+                 ⏱️ **Predicted Duration:** {round(next_lift['Predicted_Lift_Duration'], 2)} minutes")
+    else:
+        st.info("✅ No future lifts currently scheduled.")
+else:
+    st.warning("Prediction data not loaded — unable to show next lift.")
+
+
 
