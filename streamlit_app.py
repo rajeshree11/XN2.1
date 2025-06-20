@@ -6,7 +6,7 @@ import datetime
 st.set_page_config(page_title="Chelsea Bridge Dashboard", layout="wide")
 st.title("🚢 Chelsea Street Bridge Lift Analytics Dashboard")
 
-# 🔮 Load simulated lift prediction data
+#  Load Next lift prediction data
 @st.cache_data
 def load_predictions():
     try:
