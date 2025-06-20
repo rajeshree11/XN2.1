@@ -6,35 +6,42 @@ import datetime
 st.set_page_config(page_title="Chelsea Bridge Dashboard", layout="wide")
 st.title("🚢 Chelsea Street Bridge Lift Analytics Dashboard")
 
-# 🔄 Load simulated prediction data (without ETA)
+# ========================
+# 🔮 Load Simulated Predictions
+# ========================
 @st.cache_data
-def load_predictions():
+def load_simulated_lift_data():
     try:
-        sim_df = pd.read_csv("final_simulated_bridge_lift_dataset.csv")
-        sim_df = sim_df.dropna(subset=['Lift_Duration'])
-        return sim_df
+        sim_df = pd.read_csv("simulated_bridge_lift_data (1).csv")
+        sim_df['datetime'] = pd.to_datetime(sim_df['datetime'], errors='coerce')
+        sim_df = sim_df.dropna(subset=['datetime', 'Lift_Duration'])
+        return sim_df.sort_values(by='datetime')
     except Exception as e:
-        st.error(f"❌ Error loading lift simulation data: {e}")
+        st.error(f"❌ Failed to load simulated lift data: {e}")
         return pd.DataFrame()
 
-predictions = load_predictions()
+sim_df = load_simulated_lift_data()
 
-# 📅 Show next simulated lift (first row or sorted by shortest notice)
-if not predictions.empty:
-    next_lift = predictions.sort_values(by='Notice_min').iloc[0]
-    st.markdown("### 📅 Next Simulated Lift (Preview)")
-    st.info(f"""
-    🚢 **Lift Type:** {next_lift.get('Lift Type', 'N/A')}  
-    ⏱️ **Predicted Duration:** {round(next_lift['Lift_Duration'], 2)} minutes  
-    📍 **Direction:** {next_lift.get('Direction', 'N/A')}  
-    ⚓ **Vessel Count:** {next_lift.get('Vessel_Count', 'N/A')}  
-    🌊 **Tide Level:** {next_lift.get('Tide_Level', 'N/A')} m  
-    ☀️ **Is Daylight:** {'Yes' if next_lift.get('Is_Daylight', 0) == 1 else 'No'}
-    """)
-else:
-    st.warning("⚠️ No simulated lift data available.")
+if not sim_df.empty:
+    next_predicted = sim_df[sim_df['datetime'] > pd.Timestamp.now()]
+    if not next_predicted.empty:
+        next_lift = next_predicted.iloc[0]
+        st.markdown("### 🔮 Next Predicted Bridge Lift")
+        st.success(f"""
+        🕒 **Predicted Time:** {next_lift['datetime'].strftime('%Y-%m-%d %H:%M')}  
+        ⏱️ **Lift Duration:** {round(next_lift['Lift_Duration'], 2)} minutes  
+        🚢 **Vessels:** {next_lift['Vessel_Count']}  
+        🌊 **Tide:** {next_lift['tide_ft']} ft  
+        ☀️ **Daylight:** {"Yes" if next_lift['Is_Daylight'] == 1 else "No"}  
+        🌧️ **Rain:** {next_lift['rain_mm']} mm  
+        🌡️ **Temp:** {next_lift['temperature_C']} °C  
+        """)
+    else:
+        st.info("No upcoming lift found in simulated predictions.")
 
-# 📦 Load core bridge data
+# ========================
+# 📦 Load Historical Data
+# ========================
 @st.cache_data
 def load_data():
     df = pd.read_excel("Chelsea Bridge Data Points_03272025.xlsx", sheet_name="Data", skiprows=3)
@@ -59,7 +66,9 @@ def load_data():
 
 df = load_data()
 
-# 🔎 Sidebar Filters
+# ========================
+# 🔍 Sidebar Filters
+# ========================
 st.sidebar.header("🔎 Filter Options")
 directions = st.sidebar.multiselect("Select Direction", df['Direction'].unique(), default=df['Direction'].unique())
 
@@ -74,7 +83,9 @@ min_dur = int(df['Duration_Minutes'].min()) if not df.empty else 0
 max_dur = int(df['Duration_Minutes'].max()) if not df.empty else 60
 duration_range = st.sidebar.slider("Select Duration Range (Minutes)", min_dur, max_dur, (min_dur, max_dur))
 
-# 🔍 Apply filters
+# ========================
+# 🔎 Filter Data
+# ========================
 filtered_df = df[
     (df['Direction'].isin(directions)) &
     (df['Start_Time'].dt.date >= date_range[0]) &
@@ -86,14 +97,18 @@ filtered_df = df[
 if vessel_search:
     filtered_df = filtered_df[filtered_df['Vessel'].str.contains(vessel_search, case=False, na=False)]
 
-# 📊 Summary KPIs
+# ========================
+# 📊 KPIs
+# ========================
 st.markdown("### 📊 Summary Metrics")
 col1, col2, col3 = st.columns(3)
 col1.metric("Total Lifts", len(filtered_df))
 col2.metric("Avg Duration (min)", round(filtered_df['Duration_Minutes'].mean(), 2) if len(filtered_df) > 0 else "N/A")
 col3.metric("Total Lift Time (hrs)", round(filtered_df['Duration_Minutes'].sum() / 60, 2))
 
-# 📈 Tabs
+# ========================
+# 📈 Visual Tabs
+# ========================
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📅 Lifts by Weekday",
     "⏱️ Duration Histogram",
