@@ -5,6 +5,8 @@ import datetime
 
 st.set_page_config(page_title="Chelsea Bridge Dashboard", layout="wide")
 st.title("🚢 Chelsea Street Bridge Lift Analytics Dashboard")
+import os
+st.write("📁 Files found:", os.listdir("."))
 
 # ⏳ Load predictions and show next ETA
 @st.cache_data
