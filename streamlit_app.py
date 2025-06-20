@@ -19,10 +19,10 @@ def load_predictions():
 
 predictions = load_predictions()
 
-# 🧭 Display the next simulated lift
+# 🧭 Display the next lift prediction
 if not predictions.empty:
     next_lift = predictions.iloc[0]
-    st.markdown("### 🔮 Next Simulated Bridge Lift")
+    st.markdown("###  Next Bridge Lift")
     st.info(f"""
     🛥️ **Lift Type:** {next_lift.get('Lift Type', 'N/A')}  
     ⏱️ **Predicted Duration:** {round(next_lift['Lift_Duration'], 2)} minutes  
