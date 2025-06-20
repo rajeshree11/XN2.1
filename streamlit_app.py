@@ -5,6 +5,18 @@ import datetime
 
 st.set_page_config(page_title="Chelsea Bridge Dashboard", layout="wide")
 st.title("🚢 Chelsea Street Bridge Lift Analytics Dashboard")
+@st.cache_data
+def load_predictions():
+    try:
+        pred_df = pd.read_csv("final_predictions_output.csv")
+        st.success("✅ final_predictions_output.csv loaded successfully.")
+        st.write("📋 Columns:", pred_df.columns.tolist())
+        pred_df['ETA'] = pd.to_datetime(pred_df['ETA'], errors='coerce')
+        pred_df = pred_df.dropna(subset=['ETA', 'Predicted_Lift_Duration'])
+        return pred_df
+    except Exception as e:
+        st.error(f"❌ Error loading predictions: {e}")
+        return pd.DataFrame()
 
 
 # ⏳ Load predictions and show next ETA
