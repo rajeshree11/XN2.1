@@ -10,22 +10,22 @@ st.title("🚢 Chelsea Street Bridge Lift Analytics Dashboard")
 @st.cache_data
 def load_predictions():
     try:
-        pred_df = pd.read_csv("final_simulated_bridge_lift_dataset.csv")
-        pred_df['ETA'] = pd.to_datetime(pred_df['ETA'], errors='coerce')
-        pred_df = pred_df.dropna(subset=['ETA', 'Lift_Duration'])
-        return pred_df
+        sim_df = pd.read_csv("final_simulated_bridge_lift_dataset.csv")
+        sim_df['ETA'] = pd.to_datetime(sim_df['ETA'], errors='coerce')
+        sim_df = sim_df.dropna(subset=['ETA', 'Lift_Duration'])
+        return sim_df
     except Exception as e:
-        st.error(f"❌ Error loading simulated lift data: {e}")
+        st.error(f"❌ Error loading lift simulation data: {e}")
         return pd.DataFrame()
 
 predictions = load_predictions()
 
-# Show next lift from simulated data
+# Display next scheduled lift
 if not predictions.empty:
     upcoming = predictions[predictions['ETA'] > pd.Timestamp.now()].sort_values(by='ETA')
     if not upcoming.empty:
         next_lift = upcoming.iloc[0]
-        st.markdown("### 📅 Next Scheduled Simulated Lift")
+        st.markdown("### 📅 Next Scheduled Lift (Simulated)")
         st.info(f"""
         🛥️ **ETA:** {next_lift['ETA'].strftime('%Y-%m-%d %H:%M')}  
         ⏱️ **Predicted Duration:** {round(next_lift['Lift_Duration'], 2)} minutes  
@@ -33,7 +33,7 @@ if not predictions.empty:
         🚢 **Vessel Type:** {next_lift.get('Vessel', 'N/A')}
         """)
     else:
-        st.success("✅ No future lifts currently scheduled.")
+        st.success("✅ No upcoming lifts found.")
 
 
 # 📦 Load core bridge data
